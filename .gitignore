@@ -1,0 +1,62 @@
+# ---- 凭据与抓包产物（最高优先级，任何情况下都不入库）----
+sign_body_*.json
+sign_body_*
+*.har
+*.pcap
+*.pcapng
+
+# mitmproxy 运行目录与产物
+mitm/
+mitm-out/
+.mitmproxy/
+*.mitmproxy
+mitmproxy-ca*.pem
+mitmproxy-ca*.cer
+mitmproxy-ca*.p12
+mitmproxy-dhparam.pem
+
+# 日志
+*.log
+jl_capture.log
+
+# 抓包/调试备份（可能含 token、cookie、手机号）
+proxy_backup.json
+*.reg
+lfsvc.reg
+location.reg
+base.txt
+r.txt
+
+# 小程序包与反编译中间物
+*.wxapkg
+*.wxapkg.dec
+wpkg/
+appservice_*.js
+src_chunk_*.js
+chunk_*.js
+
+# 账号态导出
+cookies*.json
+storage_state*.json
+*token*.json
+!requirements.txt
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---- 临时 ----
+*.tmp
+*.bak
+~$*
