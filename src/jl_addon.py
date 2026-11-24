@@ -19,7 +19,7 @@
 观察 + 改写：
 
     $env:JL_REWRITE="1"
-    $env:JL_LAT="34.81605"; $env:JL_LON="113.53683"
+    $env:JL_LAT="<TARGET_LAT>"; $env:JL_LON="<TARGET_LON>"
     $env:JL_NAME="<PLACE_NAME>"; $env:JL_ADDR="<PLACE_ADDRESS>"
     mitmdump -s src/jl_addon.py --listen-port 8899
 
@@ -54,12 +54,34 @@ LOG_PATH = os.path.join(OUT_DIR, "jl_addon.log")
 # 是否改写。默认 0 = 纯观察，避免误改。
 REWRITE = os.environ.get("JL_REWRITE", "0") == "1"
 
-# 目标点。默认值是「郑州大学(培英路)」这一组实测坐标，仅作占位示例，
-# 换成任何地点都能用；真正要改的是这三个常量背后的环境变量。
-LAT = float(os.environ.get("JL_LAT", "34.81605"))
-LON = float(os.environ.get("JL_LON", "113.53683"))
+# 目标点。**必须通过环境变量提供**——仓库里不留任何真实坐标。
+# 未设置时给 0.0 作为占位，并在启动时打一条警告；改写不会生效到有意义的位置。
+#
+# 正确用法：
+#   $env:JL_LAT="<TARGET_LAT>"; $env:JL_LON="<TARGET_LON>"
+#   $env:JL_NAME="<PLACE_NAME>"; $env:JL_ADDR="<PLACE_ADDRESS>"
+#
+# 注：本路线（反代）已证伪，见 docs/07。这些值现在只用于演示与单测。
+def _env_float(name: str) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return 0.0
+    try:
+        return float(raw)
+    except ValueError:
+        # 明确报错，不静默吞掉——否则会拿着一个 0.0 的坐标去改写
+        raise SystemExit(f"[jl_addon] 环境变量 {name} 不是合法数字: {raw!r}")
+
+
+LAT = _env_float("JL_LAT")
+LON = _env_float("JL_LON")
 NAME = os.environ.get("JL_NAME", "<PLACE_NAME>")
 ADDR = os.environ.get("JL_ADDR", "<PLACE_ADDRESS>")
+
+# 没配坐标时提醒一句，避免「改写了但改到 (0,0)」这种静默错误。
+if REWRITE and LAT == 0.0 and LON == 0.0:
+    print("[jl_addon] 警告: JL_REWRITE=1 但未设置 JL_LAT/JL_LON，"
+          "坐标将改写为 (0,0)。设置后再运行。", flush=True)
 
 # 日志脱敏开关。1 = 只记「有没有」，0 = 明文落盘（仅本机排障）。
 MASK_AUTH = os.environ.get("JL_MASK_AUTH", "1") == "1"

@@ -239,7 +239,7 @@ Write-Host @"
     加改写时先设环境变量（同一个 shell）：
 
         `$env:JL_REWRITE="1"
-        `$env:JL_LAT="34.81605"; `$env:JL_LON="113.53683"
+        `$env:JL_LAT="<TARGET_LAT>"; `$env:JL_LON="<TARGET_LON>"
         `$env:JL_NAME="<PLACE_NAME>"; `$env:JL_ADDR="<PLACE_ADDRESS>"
 
     抓包产物落在 $OutDir（已在 .gitignore 里），

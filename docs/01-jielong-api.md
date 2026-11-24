@@ -234,12 +234,12 @@ applyPickedLocation: function(e) {
 实测出现过、需要覆盖的路径：
 
 ```
-form[i].value                       "郑州大学(培英路)"  (字符串，等于 name)
+form[i].value                       "<PLACE_NAME>"  (字符串，等于 name)
 form[i].showText                    true
 form[i].locationData.name           <PLACE_NAME>
 form[i].locationData.address        <PLACE_ADDRESS>
-form[i].locationData.latitude       34.81605
-form[i].locationData.longitude      113.53683
+form[i].locationData.latitude       <TARGET_LAT>
+form[i].locationData.longitude      <TARGET_LON>
 item.location[0].lat / .lng         (locationPicker 侧)
 clockLocationInfo.{lat,lng,...}     (打卡页)
 ```
