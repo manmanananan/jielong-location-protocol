@@ -4,6 +4,11 @@
 # PowerShell 脚本在 Windows 上用 CRLF 更稳（部分老版本 PS 对 LF 的 here-string 处理有差异）
 *.ps1 text eol=crlf
 
+# 语言统计：本项目主体是 Python addon，setup.ps1 只是 Windows 环境安装脚本。
+# 不排除的话 ps1(10071B) 比 jl_addon.py(9838B) 大 233 字节，linguist 会把整仓库判成 PowerShell。
+*.ps1 linguist-detectable=false
+docs/* linguist-documentation
+
 # 二进制
 *.png binary
 *.jpg binary
