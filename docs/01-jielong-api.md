@@ -55,13 +55,37 @@
 | 4 | POST | `/activity/getSignListMore` | `{"msg":"token为空","status":901}` | ✅ 存在 |
 | 5 | POST | `/activity/delSignOrder` | `{"msg":"token为空","status":901}` | ✅ 存在 |
 | 6 | POST | `/activity/signDel` | `{"msg":"token为空","status":901}` | ✅ 存在 |
-| 7 | POST | `/v1/activity/activityDetail` 等 | `404` | ❌ 不存在 |
+| 7 | POST | `/v1/activity/activityDetail` 等 | `404` + `{"msg":"","status":0}` | ❌ 不存在 |
 
 > 表 5、6 两个删除类接口是本轮顺手探到的，**不属于签到主链路**，
 > 记录在此仅用于说明「`/activity/*` 是一个扁平命名空间，命名无统一规范」。
 > 未对任何删除接口做写操作测试。
 
-### 3.2 语义推断
+### 3.2 `status` 字段的真实语义（重要，别误读）
+
+**`status:0` 不是成功码。** 这是本项目最容易踩的坑，单独列出。
+
+实测 `status:0` 出现在四种互不相同的情形里：
+
+| 请求 | HTTP | 响应体 | 实际含义 |
+|---|---|---|---|
+| `POST /activity/nonexistent` | **404** | `{"msg":"","status":0}` | 路由未命中 |
+| `GET /` | 200 | `{"msg":null,"status":0}` | 根路径兜底 |
+| `GET /activity/activityDetail` | 200 | `{"msg":"哎哟！出错啦！","status":0}` | 方法不对（该接口只收 POST） |
+| —— | —— | `{"msg":"","status":0}` | `base.txt` 里的一条历史记录 |
+
+四种情形唯一的共同点是：**它们都不是业务成功**。
+
+结论：`status:0` 更像这个后端的**默认/未设置值**，而不是「成功」。
+它和 `msg` 是解耦的——`msg` 里明明写着「出错啦」，`status` 依然是 0。
+
+**所以不能用 `status:0` 判断签到是否成功。**
+
+目前唯一能可靠判定的是 `status:901`（缺鉴权），因为它是**唯一一个
+能被独立复现、且语义单一**的码。业务成功码要等 U1 解开后由真实抓包确定，
+在那之前任何「`status:0` = 成功」的说法都是猜测。
+
+### 3.3 `status:901` 当路径探针
 
 `status:901` 一律在参数校验之前返回，说明服务端是「先查 token，再验参数」。
 反过来利用这一点可以做**路径存在性探测**：
@@ -71,9 +95,15 @@ POST /activity/<随便什么>    → 若返回 901，路径存在
                              → 若返回 404，路径不存在
 ```
 
+这条判据已验证（对照组：`/activity/nonexistentProbe123` 返回 404，
+六条真实路径全部返回 901）。
+
+> 注意探针要**同时看 HTTP 码和 body**：只看 body 会被 `status:0` 骗到，
+> 只看 HTTP 码会漏掉「路径存在但方法不对」的情况。
+
 这条判据在 `docs/04` 里被记为「已验证的探测手法」。
 
-### 3.3 签到主链路（推测，待抓包确认）
+### 3.4 签到主链路（推测，待抓包确认）
 
 ```
 ① 进入活动   POST /activity/activityDetail   body: {} 或 {id}

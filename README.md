@@ -154,6 +154,10 @@ mitmdump -s src\jl_addon.py --listen-port 8899
 > addon 会一次探多个候选头名（`Authorization` / `token` / `X-Token` /
 > `access-token` / `jielong-token`），所以这条日志本身就在回答
 > 「鉴权头到底叫什么」这个未解决项——见 `docs/04` 的 U2。
+> 哪个头变成 `yes(N)`，N 就是它的长度，头名也就定了。
+
+> **⚠️ 待验证提醒**：这里能确认的只有「901 = 缺鉴权」。
+> 至于「带上哪个头、什么格式就能过」，见 §5 的 ⚠️ 行。
 
 ### 3.3 改写并签到
 
@@ -171,10 +175,17 @@ mitmdump -s src\jl_addon.py --listen-port 8899
 ```
 [..] POST /activity/sign ... len=482
 [..]     >>> REWRITTEN -> (34.81605, 113.53683) <PLACE_NAME>
-[..] <<< 200 /activity/sign :: {"msg":"...","status":0}
+[..] <<< 200 /activity/sign :: {"msg":"...","status":<码>}
 ```
 
-`status:0` = 服务端接受。`status:901` = 还没带上 token（见 `docs/04` 的未解决项）。
+`status:901` = 还没带上 token（见 `docs/04` 的未解决项 U1）。
+
+> **⚠️ 别把 `status:0` 当成「成功」。**
+> 实测 `status:0` 至少出现在四种情形里：404 路由未命中、`GET /` 返回 `{"msg":null,"status":0}`、
+> `GET` 打真实接口返回「哎哟！出错啦！」，以及一条来源不明的 `base.txt` 记录。
+> 它更像是这个后端的**默认值**，不是成功码。判断「改写是否被接受」要看
+> `status` 与 `msg` 的组合，并且必须有一次真正带 token 的请求作为对照。
+> 详见 `docs/01` §3.2。
 
 ### 3.4 环境变量全表
 
@@ -195,13 +206,17 @@ mitmdump -s src\jl_addon.py --listen-port 8899
 repo/
 ├── README.md                     ← 你在这里
 ├── .gitignore                    ← 排除 sign_body_*.json / mitm/ / *.log 等凭据文件
+├── .gitattributes                ← 固定换行，避免 CRLF 噪声
 ├── src/
 │   └── jl_addon.py               ← 核心：mitmproxy 抓包 + 递归改写定位字段
+├── examples/
+│   └── quickstart.md             ← 三分钟看懂：curl 实测基准 + 实测/推测对照表
 ├── docs/
-│   ├── 01-jielong-api.md         ← 接口清单、探测记录、返回码语义
-│   ├── 02-why-not-system-gps.md  ← 为什么系统级模拟无效；WMPF 路线的复盘
+│   ├── 01-jielong-api.md         ← 接口清单、探测记录、status 字段语义
+│   ├── 02-why-not-system-gps.md  ← 系统级模拟为何无效；为何不改客户端
 │   ├── 03-mitm-setup.md          ← mitmproxy 安装 / CA / 系统代理 / 上游链路
-│   └── 04-roadmap.md             ← 已验证 vs 待验证（含未解决项）
+│   ├── 04-roadmap.md             ← 已验证 vs 待验证清单（U1–U6）
+│   └── 05-fallback-tool.md       ← 【大纲】桌面定位工具兜底路线，待主线结论
 └── scripts/
     └── setup.ps1                 ← 一键装 mitmproxy、起代理、装 CA
 ```
@@ -210,19 +225,31 @@ repo/
 
 ## 5. 已验证到什么程度
 
+> 这一节只放**实测过**的。凡依赖 token 的表述都标了 `⚠️ 待验证`，
+> 不要当成定论引用。
+
 | 能力 | 状态 |
 |---|---|
 | 抓到 `jielong.huolieyun.com` 明文请求 | ✅ 已验证 |
-| 确认 `/activity/*` 系列路径存在、未鉴权返回 901 | ✅ 已验证 |
+| 确认 `/activity/*` 六条路径存在、未鉴权返回 901 | ✅ 已验证 |
 | 确认 `/v1/...` 前缀不存在（404） | ✅ 已验证 |
+| **确认 `status:0` 不是成功码**（404/根路径/方法错都是 0） | ✅ 已验证（见 `docs/01` §3.2） |
+| 业务接口只收 POST，GET 返回「哎哟！出错啦！」 | ✅ 已验证 |
 | 确认定位校验在 JS 层、提交体是普通 JSON 字段 | ✅ 已验证（反编译可读） |
 | addon 能递归改写嵌套定位字段 | ✅ 已验证（单测，见 `docs/04` §1.2） |
 | addon 不会把鉴权头写进日志 | ✅ 已验证（同上） |
 | addon 不误改非定位字段 / 非 JSON 体 / GET 请求 | ✅ 已验证（同上） |
+| **鉴权头名是 `Authorization`** | ⚠️ 待验证（U2，五个候选里未定） |
+| **值的格式是 `Bearer <TOKEN>`** | ⚠️ 待验证（U3） |
+| **只需要 token，不需要签名/时间戳** | ⚠️ 待验证（U6，弱证据） |
+| **`activityDetail` 的字段名是 `id`** | ⚠️ 待验证（U5） |
+| **业务成功码是什么** | ⚠️ 待验证（U4，已确认不是 0） |
 | 改写后服务端返回「接龙成功」 | ⚠️ 待验证（缺一次带鉴权的抓包） |
-| **token 的来源与头名** | ❌ **未解决** |
+| **token 的来源** | ❌ **未解决（U1，总闸）** |
 
-最后一项是整个方案唯一的硬缺口，单列在 `docs/04-roadmap.md` 的 U1–U3。
+最后一行是整个方案的唯一硬缺口：U2–U6 全部依赖它。
+单列在 `docs/04-roadmap.md` §二的 U1–U6 清单里，每条都写了
+「怎么验证」和「验证后改哪个文档的哪一段」。
 
 ---
 
